@@ -1,0 +1,24 @@
+{
+    "name": "xperience",
+    "private": true,
+    "type": "module",
+    "workspaces": [
+        "apps/*",
+        "packages/*"
+    ],
+    "engines": {
+        "node": ">=22"
+    },
+    "scripts": {
+        "dev": "concurrently -n api,web -c blue,green \"npm run dev -w @xperience/api\" \"npm run dev -w @xperience/web\"",
+        "build": "npm run build -w @xperience/api && npm run build -w @xperience/web",
+        "typecheck": "npm run typecheck --workspaces --if-present",
+        "lint": "npm run lint --workspaces --if-present",
+        "format": "prettier --write ."
+    },
+    "devDependencies": {
+        "concurrently": "^10.0.5",
+        "prettier": "^3.9.9",
+        "typescript": "^6.0.3"
+    }
+}
