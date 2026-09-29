@@ -93,7 +93,7 @@ export type EntityType = (typeof ENTITY_TYPES)[number];
 export const ACTORS = ['user', 'ai', 'system'] as const;
 export type Actor = (typeof ACTORS)[number];
 
-export const ACTIVITY_ACTIONS = ['created', 'updated', 'cancelled', 'resolved'] as const;
+export const ACTIVITY_ACTIONS = ['created', 'updated', 'cancelled', 'resolved', 'deleted'] as const;
 export type ActivityAction = (typeof ACTIVITY_ACTIONS)[number];
 
 export const MESSAGE_ROLES = ['user', 'assistant'] as const;
