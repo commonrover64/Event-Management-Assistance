@@ -11,12 +11,20 @@
     "lint": "eslint ."
   },
   "dependencies": {
-    "@xperience/shared": "*"
+    "@xperience/shared": "*",
+    "express": "^5.2.1",
+    "helmet": "^8.3.0",
+    "mongoose": "^9.10.2",
+    "pino": "^10.3.1",
+    "pino-http": "^11.0.0",
+    "zod": "^4.6.5"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
+    "@types/express": "^5.0.6",
     "@types/node": "^26.6.3",
     "eslint": "^10.11.0",
+    "pino-pretty": "^13.1.3",
     "tsup": "^8.5.1",
     "tsx": "^4.23.15",
     "typescript-eslint": "^8.71.0"

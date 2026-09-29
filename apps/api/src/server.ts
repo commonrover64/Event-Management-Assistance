@@ -1,17 +1,36 @@
-import { APP_NAME } from '@xperience/shared';
-import { operationSchema } from '@xperience/shared';
+import { createApp } from './app';
+import { env } from './config/env';
+import { connectDatabase, disconnectDatabase } from './lib/db';
+import { logger } from './lib/logger';
 
-console.log(`${APP_NAME} API workspace is wired up`);
+const SHUTDOWN_TIMEOUT_MS = 10_000;
 
-const samples: unknown[] = [
-  { op: 'updateVendor', target: 'V2', patch: { capacity: 150 } },
-  { op: 'addTask', data: { title: 'Arrange airport transfers', category: 'transportation' } },
-  { op: 'deleteTask', target: 'T1' },
-  { op: 'addTask', data: { title: '', category: 'food' } },
-];
+async function main(): Promise<void> {
+  await connectDatabase(env.MONGODB_URI);
 
-for (const sample of samples) {
-  const result = operationSchema.safeParse(sample);
-  console.log(result.success ? 'OK  ' : 'FAIL', JSON.stringify(sample));
-  if (!result.success) console.log('     ', result.error.issues.map((i) => i.message).join('; '));
+  const server = createApp().listen(env.PORT, (error) => {
+    if (error) {
+      logger.fatal({ err: error }, 'Failed to bind port');
+      process.exit(1);
+    }
+    logger.info(`API listening on http://localhost:${env.PORT}`);
+  });
+
+  const shutdown = (signal: NodeJS.Signals) => {
+    logger.info(`${signal} received, shutting down`);
+    // Stop accepting connections, let in-flight requests finish, then close the db
+    server.close(async () => {
+      await disconnectDatabase();
+      process.exit(0);
+    });
+    setTimeout(() => process.exit(1), SHUTDOWN_TIMEOUT_MS).unref();
+  };
+
+  process.on('SIGTERM', shutdown);
+  process.on('SIGINT', shutdown);
 }
+
+main().catch((err: unknown) => {
+  logger.fatal({ err }, 'Failed to start server');
+  process.exit(1);
+});
