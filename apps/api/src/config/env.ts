@@ -8,16 +8,11 @@ const envSchema = z
     CLIENT_URL: z.url(),
     MONGODB_URI: z.string().startsWith('mongodb', 'Must be a MongoDB connection string'),
     JWT_ACCESS_SECRET: z.string().min(32),
-    JWT_REFRESH_SECRET: z.string().min(32),
     JWT_ACCESS_TTL_MINUTES: z.coerce.number().int().positive().default(15),
     JWT_REFRESH_TTL_DAYS: z.coerce.number().int().positive().default(7),
     GROQ_API_KEY: z.string().min(1),
     GROQ_MODEL: z.string().min(1),
   })
-  .refine((e) => e.JWT_ACCESS_SECRET !== e.JWT_REFRESH_SECRET, {
-    message: 'Access and refresh secrets must differ',
-    path: ['JWT_REFRESH_SECRET'],
-  });
 
 function loadEnv() {
   const result = envSchema.safeParse(process.env);
