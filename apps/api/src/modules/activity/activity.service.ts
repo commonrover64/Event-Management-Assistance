@@ -50,3 +50,8 @@ export async function listActivityForMessage(messageId: string): Promise<Activit
   const docs = await ActivityModel.find({ messageId }).sort({ createdAt: 1 });
   return docs.map(toActivityEntry);
 }
+
+// A status moving into "cancelled" is logged as its own action so the feed can highlight it
+export function statusChangeAction(before: string, after: string): ActivityAction {
+  return before !== 'cancelled' && after === 'cancelled' ? 'cancelled' : 'updated';
+}

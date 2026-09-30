@@ -9,11 +9,14 @@ import { badRequest, notFound } from '../../lib/errors';
 import { omitUndefined, parseDateInput } from '../../lib/mapping';
 import { applyPatch } from '../../lib/patch';
 import { ActivityModel } from '../activity/activity.model';
-import { recordActivity } from '../activity/activity.service';
+import { recordActivity, statusChangeAction } from '../activity/activity.service';
 import type { MutationContext } from '../activity/activity.service';
 import { toEventDetails } from './event.mapper';
 import { EventModel } from './event.model';
 import type { EventDoc } from './event.model';
+import { GuestSegmentModel } from '../guests/guest-segment.model';
+import { TaskModel } from '../tasks/task.model';
+import { VendorModel } from '../vendors/vendor.model';
 
 function toEventDbFields(input: UpdateEventInput) {
   const { startDate, endDate, ...rest } = input;
@@ -105,8 +108,12 @@ export async function updateEvent(
 }
 
 export async function deleteEvent(eventId: string): Promise<void> {
-  // Child collections are added here as their modules are built
-  await Promise.all([ActivityModel.deleteMany({ eventId })]);
+  await Promise.all([
+    TaskModel.deleteMany({ eventId }),
+    VendorModel.deleteMany({ eventId }),
+    GuestSegmentModel.deleteMany({ eventId }),
+    ActivityModel.deleteMany({ eventId }),
+  ]);
   await EventModel.deleteOne({ _id: eventId });
 }
 
@@ -136,6 +143,7 @@ export async function updateSubEvent(
   const event = await findEventOrThrow(ctx.eventId);
   const sub = findSubEventOrThrow(event, subEventId);
   const wasCancelled = sub.status === 'cancelled';
+  const statusBefore = sub.status;
   const changes = applyPatch(sub, toSubEventDbFields(input));
   if (changes.length === 0) return toEventDetails(event);
 
@@ -143,7 +151,7 @@ export async function updateSubEvent(
   await recordActivity(ctx, {
     entityType: 'sub_event',
     entityId: subEventId,
-    action: !wasCancelled && sub.status === 'cancelled' ? 'cancelled' : 'updated',
+    action: statusChangeAction(statusBefore, sub.status),
     summary: `Updated sub-event "${sub.name}": ${changes.join(', ')}`,
   });
   return toEventDetails(event);
@@ -159,7 +167,14 @@ export async function deleteSubEvent(
 
   sub.deleteOne();
   await event.save();
-  // References from tasks and vendors are cleared here once those modules exist
+
+  await Promise.all([
+    TaskModel.updateMany({ eventId: ctx.eventId, subEventId }, { subEventId: null }),
+    VendorModel.updateMany(
+      { eventId: ctx.eventId, subEventIds: subEventId },
+      { $pull: { subEventIds: subEventId } },
+    ),
+  ]);
 
   await recordActivity(ctx, {
     entityType: 'sub_event',
