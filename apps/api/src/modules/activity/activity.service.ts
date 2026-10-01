@@ -1,4 +1,10 @@
-import type { ActivityAction, ActivityEntry, Actor, EntityType, AppliedChange } from '@xperience/shared';
+import type {
+  ActivityAction,
+  ActivityEntry,
+  Actor,
+  EntityType,
+  AppliedChange,
+} from '@xperience/shared';
 import { toId, toIso } from '../../lib/mapping';
 import { ActivityModel } from './activity.model';
 import type { ActivityDoc } from './activity.model';

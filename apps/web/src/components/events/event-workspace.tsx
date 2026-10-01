@@ -11,9 +11,7 @@ export function EventWorkspace({ eventId }: { eventId: string }) {
 
   if (isPending) return <FullPageLoader label="Loading event" />;
   if (isError) {
-    return (
-      <p className="mx-auto max-w-6xl px-4 py-8 text-destructive">{getErrorMessage(error)}</p>
-    );
+    return <p className="mx-auto max-w-6xl px-4 py-8 text-destructive">{getErrorMessage(error)}</p>;
   }
 
   return (
