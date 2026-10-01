@@ -1,0 +1,7 @@
+# Proxy the API at Netlify's edge, before the Next.js runtime, so the browser stays
+# on one origin and the refresh cookie remains first-party
+[[redirects]]
+  from = "/api/*"
+  to = "https://YOUR-SERVICE.onrender.com/api/:splat"
+  status = 200
+  force = true
