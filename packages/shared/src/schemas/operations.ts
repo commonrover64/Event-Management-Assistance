@@ -10,7 +10,10 @@ import { vendorFieldsSchema } from './vendor';
 // created earlier in the same batch ("new-transfer-task")
 export const refSchema = z.string().trim().min(1).max(40);
 
-const optionalRef = { ref: refSchema.optional() };
+const newRefSchema = refSchema.describe(
+  'Temporary handle for an item created in this turn. Must start with "new-", e.g. "new-transfers".',
+);
+const optionalRef = { ref: newRefSchema.optional() };
 
 // The AI refers to entities by ref, not database ids
 const taskOpFieldsSchema = taskFieldsSchema.omit({ subEventId: true, dependsOn: true }).extend({

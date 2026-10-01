@@ -8,7 +8,8 @@
     "build": "tsup",
     "start": "node --env-file-if-exists=.env dist/server.js",
     "typecheck": "tsc --noEmit",
-    "lint": "eslint ."
+    "lint": "eslint .",
+    "ai:preview": "tsx --env-file=.env src/scripts/ai-preview.ts"
   },
   "dependencies": {
     "@xperience/shared": "*",
@@ -16,6 +17,7 @@
     "cookie-parser": "^1.4.7",
     "express": "^5.2.1",
     "express-rate-limit": "^8.7.0",
+    "groq-sdk": "^1.6.0",
     "helmet": "^8.3.0",
     "jose": "^6.2.12",
     "mongoose": "^9.10.2",
