@@ -2,7 +2,7 @@
 
 An event manager describes their event in plain language. The assistant turns each message into validated changes to a structured plan (sub-events, tasks, vendors and guest groups), a rules engine flags risks the moment they appear, and a live dashboard shows the whole picture.
 
-**Live demo:** _added after deployment_ · **Stack:** Next.js 16 · Express 5 · MongoDB · TypeScript · Groq (gpt-oss-120b)
+**Live demo:** [event-management-assistance.netlify.app](https://event-management-assistance.netlify.app) · **Stack:** Next.js 16 · Express 5 · MongoDB · TypeScript · Groq (gpt-oss-120b)
 
 > "The transport vendor can only provide vehicles for 150 people."
 >
@@ -21,10 +21,11 @@ An event manager describes their event in plain language. The assistant turns ea
 7. [Data model](#data-model)
 8. [Technology stack](#technology-stack)
 9. [Local setup](#local-setup)
-10. [API reference](#api-reference)
-11. [Project structure](#project-structure)
-12. [Assumptions](#assumptions)
-13. [Known limitations and next steps](#known-limitations-and-next-steps)
+10. [Deployment](#deployment)
+11. [API reference](#api-reference)
+12. [Project structure](#project-structure)
+13. [Assumptions](#assumptions)
+14. [Known limitations and next steps](#known-limitations-and-next-steps)
 
 ---
 
@@ -115,7 +116,7 @@ flowchart LR
 ```
 
 - **npm workspaces monorepo** with three packages: `apps/web` (Next.js), `apps/api` (Express) and `packages/shared` (Zod schemas and TypeScript types used by both, and by the AI layer).
-- **Same-origin proxy**: the browser only ever calls `/api/*` on the web app's own origin; Next.js forwards it to Express. This keeps the refresh-token cookie first-party and removes CORS from the picture entirely.
+- **Same-origin proxy**: the browser only ever calls `/api/*` on the web app's own origin, which forwards it to Express (a Next.js rewrite locally, a Netlify edge proxy in production). This keeps the refresh-token cookie first-party and removes CORS from the picture entirely.
 - **Layered API**: routes → controllers (HTTP only) → services (business rules, no HTTP) → Mongoose models. Both the HTTP controllers and the AI executor call the same services, so the assistant obeys exactly the same rules as the manager.
 
 ---
@@ -269,7 +270,7 @@ Updates go through a small `applyPatch` helper that sets only fields whose value
 | AI            | Groq, `openai/gpt-oss-120b`, JSON mode                       | Fast inference; behind a provider interface so switching vendors is one file       |
 | Logging       | pino with redaction of auth headers and cookies              | Structured logs, no leaked credentials                                             |
 
-**Departures from the recommended stack:** the brief suggests AWS or GCP; this deployment uses Render (API) and Netlify (web) with MongoDB Atlas, which run the same Node.js and Next.js builds. The LLM is Groq, which the brief leaves open.
+**Departures from the recommended stack:** the brief suggests AWS or GCP; this deployment uses Netlify (web), Render (API) and MongoDB Atlas, which run the same Node.js and Next.js builds and would move to AWS or GCP without code changes. The LLM is Groq, which the brief leaves open.
 
 **Why JSON mode rather than Groq's schema-enforced structured outputs:** strict mode requires every field to be required, while patches are made of optional fields; best-effort mode fails the whole response if any part doesn't match. JSON mode plus per-operation Zod validation keeps the valid operations of an imperfect response.
 
@@ -351,6 +352,36 @@ Open [http://localhost:3000](http://localhost:3000), create an account and an ev
 
 ---
 
+## Deployment
+
+The live app runs on three managed services:
+
+```
+Browser ──► Netlify (Next.js app)
+               │  /api/* proxied at Netlify's edge
+               ▼
+           Render (Express API) ──► MongoDB Atlas
+                                └─► Groq
+```
+
+| Part     | Platform                             | Configuration                                                                                                                                              |
+| -------- | ------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Web app  | Netlify                              | Package directory `apps/web` · Build `npm run build -w @xperience/web` · Publish `apps/web/.next` · `NODE_VERSION=24`                                      |
+| API      | Render (Node web service, free tier) | Build `npm ci --include=dev && npm run build -w @xperience/api` · Start `npm run start -w @xperience/api` · Health check `/api/health` · `NODE_VERSION=24` |
+| Database | MongoDB Atlas (M0)                   | Database `xperience`                                                                                                                                       |
+
+**Edge proxy instead of the Next.js rewrite.** `apps/web/netlify.toml` proxies `/api/*` to the API with a status-200 rule. Netlify applies its own rules before the Next.js runtime, so API traffic never passes through a serverless function. Its 26-second timeout sits comfortably above a typical chat turn of 2–8 seconds. The browser still sees a single origin, so the refresh cookie stays first-party and secure.
+
+**Production environment.** `NODE_ENV=production` on Render turns on the `Secure` flag for the refresh cookie, removes stack traces from error responses and switches logs to JSON. The production JWT secret is separate from the development one. Secrets live only in the platforms' environment settings.
+
+**Keeping the free API awake.** A free Render instance sleeps when idle, and waking it takes longer than Netlify's 26-second proxy timeout. An uptime monitor requests `/api/health` every 10 minutes so the first visitor never meets a cold start.
+
+**Rate limits behind a proxy.** All traffic reaches the API from Netlify's servers, so limiting purely by IP would make unrelated users share one bucket. Chat is limited per signed-in user and login per IP plus email, so one person's mistakes or abuse don't lock out anyone else.
+
+**Atlas network access** is open to all addresses because Render's free tier has no fixed outbound IP. Access is protected by a dedicated read-write database user with a generated password and Atlas's mandatory TLS.
+
+---
+
 ## API reference
 
 All routes are under `/api`. Everything except health and the auth endpoints requires `Authorization: Bearer <accessToken>`. Errors always have the shape `{ "error": { "code", "message", "details?" } }`.
@@ -359,7 +390,7 @@ All routes are under `/api`. Everything except health and the auth endpoints req
 | ------------------ | ----------------------------------------------- | ------------------------------------------------------------ |
 | GET                | `/health`                                       | Liveness and database status (503 when the database is down) |
 | POST               | `/auth/register`                                | Create an account; sets the refresh cookie                   |
-| POST               | `/auth/login`                                   | Sign in (rate-limited)                                       |
+| POST               | `/auth/login`                                   | Sign in (rate-limited per IP and email)                      |
 | POST               | `/auth/refresh`                                 | Rotate the refresh cookie and return a new access token      |
 | POST               | `/auth/logout`                                  | Revoke the current session                                   |
 | GET                | `/auth/me`                                      | Current user                                                 |
@@ -377,7 +408,7 @@ All routes are under `/api`. Everything except health and the auth endpoints req
 | PATCH              | `/events/:eventId/risks/:riskId`                | Resolve, dismiss or reopen a risk                            |
 | POST               | `/events/:eventId/risks/:riskId/actions/:index` | Apply a suggested fix                                        |
 | GET                | `/events/:eventId/activity?limit=50`            | Activity feed                                                |
-| GET, POST          | `/events/:eventId/messages`                     | Chat history, or send a message (rate-limited)               |
+| GET, POST          | `/events/:eventId/messages`                     | Chat history, or send a message (rate-limited per user)      |
 
 ---
 
@@ -423,7 +454,7 @@ packages/
 - **Automated tests are not written yet.** The rules engine and executor were designed as pure, injectable units (`now` is a parameter, rules take plain data) specifically so they are straightforward to unit-test; that is the first next step.
 - **No database transactions.** Operations in a turn apply sequentially and independently by design; a single-node MongoDB doesn't support transactions, and partial application is reported rather than hidden.
 - **LLM rate limits.** Each chat turn sends roughly 4–5k tokens (mostly the operation schema), so Groq's free tier can throttle rapid conversations. The API returns a clean `AI_RATE_LIMITED` error and nothing is saved. Next steps: a fallback model and a more compact schema in the prompt.
-- **Rate limiting is per IP**, which behind a proxy can group users together. Keying the chat limiter by user id is a small improvement.
+- **Free-tier hosting.** The API depends on an uptime monitor to avoid cold starts; a paid instance or a platform without idle sleep would remove that dependency.
 - **No real-time collaboration.** The dashboard refreshes after the current user's actions; multi-user live sync (WebSockets or SSE) would be needed for teams.
 - **Duplicate detection is exact-name only**; near-duplicates ("Book photographer" vs "Hire photographer") rely on the prompt.
 - Possible extensions: budget tracking per category, vendor shortlist comparison, reminders and daily briefs, streaming assistant replies, and undoing an assistant turn from its activity entries.
