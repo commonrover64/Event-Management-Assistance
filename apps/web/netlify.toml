@@ -2,6 +2,6 @@
 # on one origin and the refresh cookie remains first-party
 [[redirects]]
   from = "/api/*"
-  to = "https://YOUR-SERVICE.onrender.com/api/:splat"
+  to = "https://event-management-assistance.onrender.com/api/:splat"
   status = 200
   force = true
