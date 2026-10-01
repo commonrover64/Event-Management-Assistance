@@ -6,6 +6,7 @@ import * as eventsController from './events.controller';
 import { guestsRouter } from '../guests/guests.routes';
 import { tasksRouter } from '../tasks/tasks.routes';
 import { vendorsRouter } from '../vendors/vendors.routes';
+import { chatRouter } from '../chat/chat.routes';
 
 // Everything below /events/:eventId, reached only after ownership is verified
 const eventScoped = Router();
@@ -26,3 +27,4 @@ eventScoped.use('/tasks', tasksRouter);
 eventScoped.use('/vendors', vendorsRouter);
 eventScoped.use('/guest-segments', guestsRouter);
 eventScoped.use('/activity', activityRouter);
+eventScoped.use('/messages', chatRouter);

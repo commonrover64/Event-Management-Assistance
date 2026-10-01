@@ -35,7 +35,8 @@ export async function remove(req: Request, res: Response): Promise<void> {
 
 export async function addSubEvent(req: Request, res: Response): Promise<void> {
   const input = createSubEventInputSchema.parse(req.body);
-  res.status(201).json({ event: await eventsService.addSubEvent(userMutationContext(req), input) });
+  const { event } = await eventsService.addSubEvent(userMutationContext(req), input);
+  res.status(201).json({ event });
 }
 
 export async function updateSubEvent(req: Request, res: Response): Promise<void> {

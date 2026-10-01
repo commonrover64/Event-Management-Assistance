@@ -1,6 +1,7 @@
 import type { EntityType } from '@xperience/shared';
+import { OperationError } from './operation-error';
 
-type RefType = Exclude<EntityType, 'event'>;
+export type RefType = Exclude<EntityType, 'event'>;
 
 const PREFIXES: Record<RefType, string> = {
   sub_event: 'S',
@@ -23,6 +24,8 @@ export class RefRegistry {
   private readonly byRef = new Map<string, RefTarget>();
   private readonly byId = new Map<string, string>();
   private readonly counters = new Map<RefType, number>();
+  // Refs whose creation failed or clashed; later operations must not silently use them
+  private readonly blocked = new Set<string>();
 
   register(type: RefType, id: string): string {
     const existing = this.byId.get(id);
@@ -35,21 +38,40 @@ export class RefRegistry {
     return ref;
   }
 
+  // Called before creating an item, so a clashing ref is rejected with no side effects
+  assertAvailable(ref: string): void {
+    if (this.byRef.has(ref) || this.blocked.has(ref)) {
+      throw new OperationError(
+        `Reference "${ref}" is already in use; new items need a unique "new-" ref`,
+      );
+    }
+  }
+
   // Refs chosen by the model for items it creates in the same batch
   alias(ref: string, type: RefType, id: string): void {
-    if (!this.byRef.has(ref)) this.add(ref, type, id);
+    this.assertAvailable(ref);
+    this.add(ref, type, id);
+  }
+
+  // After a failed or clashing create, the ref is ambiguous for the rest of the turn
+  block(ref: string): void {
+    this.blocked.add(ref);
   }
 
   refOf(id: string): string | undefined {
     return this.byId.get(id);
   }
 
-  // Returns the database id, or throws a message the model's mistake can be reported with
   resolve(ref: string, expected: RefType): string {
+    if (this.blocked.has(ref)) {
+      throw new OperationError(
+        `"${ref}" is ambiguous or refers to an item that could not be created`,
+      );
+    }
     const target = this.byRef.get(ref);
-    if (!target) throw new Error(`Unknown reference "${ref}"`);
+    if (!target) throw new OperationError(`Unknown reference "${ref}"`);
     if (target.type !== expected) {
-      throw new Error(`Reference "${ref}" is a ${target.type}, expected a ${expected}`);
+      throw new OperationError(`Reference "${ref}" is a ${target.type}, expected a ${expected}`);
     }
     return target.id;
   }

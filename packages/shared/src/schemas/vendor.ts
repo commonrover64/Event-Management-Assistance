@@ -7,7 +7,7 @@ import type { Category, VendorStatus } from './enums';
 const vendorContactSchema = z.object({
   name: optionalText(100),
   phone: optionalText(30),
-  email: z.email().optional(),
+  email: z.email().nullable().optional(),
 });
 
 export const vendorFieldsSchema = z.object({

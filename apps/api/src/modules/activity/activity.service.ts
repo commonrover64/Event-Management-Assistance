@@ -1,4 +1,4 @@
-import type { ActivityAction, ActivityEntry, Actor, EntityType } from '@xperience/shared';
+import type { ActivityAction, ActivityEntry, Actor, EntityType, AppliedChange } from '@xperience/shared';
 import { toId, toIso } from '../../lib/mapping';
 import { ActivityModel } from './activity.model';
 import type { ActivityDoc } from './activity.model';
@@ -54,4 +54,26 @@ export async function listActivityForMessage(messageId: string): Promise<Activit
 // A status moving into "cancelled" is logged as its own action so the feed can highlight it
 export function statusChangeAction(before: string, after: string): ActivityAction {
   return before !== 'cancelled' && after === 'cancelled' ? 'cancelled' : 'updated';
+}
+
+// Groups the changes made by each assistant message, for chat history in one query
+export async function listChangesByMessage(
+  messageIds: string[],
+): Promise<Map<string, AppliedChange[]>> {
+  const docs = await ActivityModel.find({ messageId: { $in: messageIds } }).sort({ createdAt: 1 });
+  const byMessage = new Map<string, AppliedChange[]>();
+
+  for (const doc of docs) {
+    if (!doc.messageId) continue;
+    const key = doc.messageId.toString();
+    const changes = byMessage.get(key) ?? [];
+    changes.push({
+      entityType: doc.entityType,
+      entityId: doc.entityId,
+      action: doc.action,
+      summary: doc.summary,
+    });
+    byMessage.set(key, changes);
+  }
+  return byMessage;
 }

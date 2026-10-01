@@ -2,21 +2,23 @@ import type {
   CreateEventInput,
   CreateSubEventInput,
   EventDetails,
+  SubEvent,
   UpdateEventInput,
   UpdateSubEventInput,
 } from '@xperience/shared';
+import { toEventDetails, toSubEvent } from './event.mapper';
 import { badRequest, notFound } from '../../lib/errors';
 import { omitUndefined, parseDateInput } from '../../lib/mapping';
 import { applyPatch } from '../../lib/patch';
 import { ActivityModel } from '../activity/activity.model';
 import { recordActivity, statusChangeAction } from '../activity/activity.service';
 import type { MutationContext } from '../activity/activity.service';
-import { toEventDetails } from './event.mapper';
 import { EventModel } from './event.model';
 import type { EventDoc } from './event.model';
 import { GuestSegmentModel } from '../guests/guest-segment.model';
 import { TaskModel } from '../tasks/task.model';
 import { VendorModel } from '../vendors/vendor.model';
+import { MessageModel } from '../chat/message.model';
 
 function toEventDbFields(input: UpdateEventInput) {
   const { startDate, endDate, ...rest } = input;
@@ -113,6 +115,7 @@ export async function deleteEvent(eventId: string): Promise<void> {
     VendorModel.deleteMany({ eventId }),
     GuestSegmentModel.deleteMany({ eventId }),
     ActivityModel.deleteMany({ eventId }),
+    MessageModel.deleteMany({ eventId }),
   ]);
   await EventModel.deleteOne({ _id: eventId });
 }
@@ -120,7 +123,7 @@ export async function deleteEvent(eventId: string): Promise<void> {
 export async function addSubEvent(
   ctx: MutationContext,
   input: CreateSubEventInput,
-): Promise<EventDetails> {
+): Promise<{ event: EventDetails; subEvent: SubEvent }> {
   const event = await findEventOrThrow(ctx.eventId);
   const sub = event.subEvents.create(toSubEventDbFields(input));
   event.subEvents.push(sub);
@@ -132,7 +135,7 @@ export async function addSubEvent(
     action: 'created',
     summary: `Added sub-event "${input.name}"`,
   });
-  return toEventDetails(event);
+  return { event: toEventDetails(event), subEvent: toSubEvent(sub) };
 }
 
 export async function updateSubEvent(

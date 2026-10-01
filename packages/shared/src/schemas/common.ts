@@ -17,7 +17,8 @@ export const dateInputSchema = z.union([z.iso.datetime({ offset: true }), z.iso.
 export const timezoneSchema = z.string().refine(isValidTimezone, 'Invalid IANA timezone');
 
 export const requiredText = (max: number) => z.string().trim().min(1).max(max);
-export const optionalText = (max: number) => z.string().trim().max(max).optional();
+// null clears the field on update, same as other nullable inputs
+export const optionalText = (max: number) => z.string().trim().max(max).nullable().optional();
 
 export interface Timestamps {
   createdAt: string;
