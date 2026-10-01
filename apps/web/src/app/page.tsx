@@ -1,5 +1,5 @@
-import { APP_NAME } from '@xperience/shared';
+import { redirect } from 'next/navigation';
 
 export default function HomePage() {
-  return <h1 className="p-8 text-2xl font-semibold">{APP_NAME}</h1>;
+  redirect('/events');
 }
