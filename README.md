@@ -2,7 +2,7 @@
 
 An event manager describes their event in plain language. The assistant turns each message into validated changes to a structured plan (sub-events, tasks, vendors and guest groups), a rules engine flags risks the moment they appear, and a live dashboard shows the whole picture.
 
-**Live demo:** [event-management-assistance.netlify.app](https://event-management-assistance.netlify.app) ·
+**Live demo:** [event-management-assistance.netlify.app](https://event-management-assistance.netlify.app/login?next=%2Fevents) ·
 
 **Stack:** Next.js 16 · Express 5 · MongoDB · TypeScript · Groq (gpt-oss-120b)
 
