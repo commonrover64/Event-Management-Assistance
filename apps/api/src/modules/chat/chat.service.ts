@@ -11,6 +11,7 @@ import { listChangesByMessage } from '../activity/activity.service';
 import type { MutationContext } from '../activity/activity.service';
 import { toChatMessage } from './message.mapper';
 import { MessageModel } from './message.model';
+import { evaluateRisks } from '../risks/risks.service';
 
 // Recent turns give conversational context; the snapshot carries the actual state
 const HISTORY_TURNS = 12;
@@ -55,6 +56,8 @@ export async function listMessages(eventId: string): Promise<ChatMessage[]> {
 }
 
 export async function sendMessage(eventId: string, content: string): Promise<ChatTurnResponse> {
+  // Fresh risks first, so the model sees what the rules already track
+  await evaluateRisks({ eventId, actor: 'system', messageId: null });
   const [snapshot, history] = await Promise.all([
     buildEventSnapshot(eventId),
     loadHistory(eventId),
@@ -73,6 +76,8 @@ export async function sendMessage(eventId: string, content: string): Promise<Cha
   const assistantId = new Types.ObjectId();
   const ctx: MutationContext = { eventId, actor: 'ai', messageId: assistantId.toString() };
   const rejected = await executeOperations(ctx, turn.operations, snapshot.refs);
+  // Risks raised or resolved by this turn's changes are attributed to this message too
+  await evaluateRisks({ eventId, actor: 'system', messageId: ctx.messageId });
 
   const assistantMessage = await MessageModel.create({
     _id: assistantId,

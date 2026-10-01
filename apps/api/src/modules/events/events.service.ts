@@ -19,6 +19,7 @@ import { GuestSegmentModel } from '../guests/guest-segment.model';
 import { TaskModel } from '../tasks/task.model';
 import { VendorModel } from '../vendors/vendor.model';
 import { MessageModel } from '../chat/message.model';
+import { RiskModel } from '../risks/risk.model';
 
 function toEventDbFields(input: UpdateEventInput) {
   const { startDate, endDate, ...rest } = input;
@@ -116,6 +117,7 @@ export async function deleteEvent(eventId: string): Promise<void> {
     GuestSegmentModel.deleteMany({ eventId }),
     ActivityModel.deleteMany({ eventId }),
     MessageModel.deleteMany({ eventId }),
+    RiskModel.deleteMany({ eventId }),
   ]);
   await EventModel.deleteOne({ _id: eventId });
 }

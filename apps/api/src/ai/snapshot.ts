@@ -4,6 +4,7 @@ import { listTasks } from '../modules/tasks/tasks.service';
 import { listVendors } from '../modules/vendors/vendors.service';
 import { formatDate, formatDateTime, weekdayName } from './dates';
 import { RefRegistry } from './ref-registry';
+import { listOpenRisks } from '../modules/risks/risks.service';
 
 // Shapes sent to the model: short refs instead of ids, no nulls, dates in the event's timezone
 export interface SnapshotPayload {
@@ -14,6 +15,7 @@ export interface SnapshotPayload {
   tasks: Record<string, unknown>[];
   vendors: Record<string, unknown>[];
   guestSegments: Record<string, unknown>[];
+  risks: Record<string, unknown>[];
 }
 
 export interface EventSnapshot {
@@ -38,11 +40,12 @@ export async function buildEventSnapshot(
   eventId: string,
   now = new Date(),
 ): Promise<EventSnapshot> {
-  const [event, tasks, vendors, segments] = await Promise.all([
+  const [event, tasks, vendors, segments, risks] = await Promise.all([
     getEvent(eventId),
     listTasks(eventId),
     listVendors(eventId),
     listSegments(eventId),
+    listOpenRisks(eventId),
   ]);
 
   const tz = event.timezone;
@@ -55,6 +58,7 @@ export async function buildEventSnapshot(
   tasks.forEach((t) => refs.register('task', t.id));
   vendors.forEach((v) => refs.register('vendor', v.id));
   segments.forEach((g) => refs.register('guest_segment', g.id));
+  risks.forEach((r) => refs.register('risk', r.id));
   const refList = (ids: string[]) => ids.map((id) => refs.refOf(id)).filter(isDefined);
 
   const payload: SnapshotPayload = {
@@ -114,6 +118,16 @@ export async function buildEventSnapshot(
         count: g.count,
         needs: g.needs,
         notes: g.notes,
+      }),
+    ),
+    risks: risks.map((r) =>
+      compact({
+        ref: refs.refOf(r.id),
+        source: r.source,
+        type: r.type,
+        severity: r.severity,
+        title: r.title,
+        related: refList(r.related.map((e) => e.id)),
       }),
     ),
   };

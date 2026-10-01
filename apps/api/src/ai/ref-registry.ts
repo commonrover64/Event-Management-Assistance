@@ -80,4 +80,16 @@ export class RefRegistry {
     this.byRef.set(ref, { type, id });
     this.byId.set(id, ref);
   }
+
+  // For fields that may point at any kind of item, such as a risk's related entities
+  resolveAny(ref: string): RefTarget {
+    if (this.blocked.has(ref)) {
+      throw new OperationError(
+        `"${ref}" is ambiguous or refers to an item that could not be created`,
+      );
+    }
+    const target = this.byRef.get(ref);
+    if (!target) throw new OperationError(`Unknown reference "${ref}"`);
+    return target;
+  }
 }

@@ -29,7 +29,12 @@ const RULES = `Rules:
 - When asked to help understand a problem, explain in the reply what it affects and what must happen next.
 - When asked about status or what is pending, also point out gaps visible in the state: key vendor categories with no confirmed vendor, vendor capacity below the number of people it must serve, guest needs with no task or vendor covering them, and tasks that are overdue or have no due date.
 - Use dependsOn when one task cannot start before another finishes.
-- If the message is only a question, answer it and return an empty operations list.`;
+- If the message is only a question, answer it and return an empty operations list.
+- The state lists open risks. Risks with source "rule" are detected automatically and clear themselves once the problem is fixed. Never add risks for capacity shortfalls, missing or unavailable vendors, overdue, blocked or mis-ordered tasks, or guest needs with nothing planned; those are already tracked.
+- Use addRisk only for judgment risks the automatic checks cannot see, such as weather for an outdoor ceremony, a key person's limited availability, budget pressure or a single point of failure. Link them with "related" refs.
+- When the manager's update fixes the problem behind a risk, make the change that fixes it; rule risks clear on their own. Use resolveRisk only for risks with source "ai".
+- When asked about status, lead with the most severe open risks.
+- In the reply, refer to items by their names (e.g. "the Haldi", "the Reception photographer risk"). Refs like S2 or R7 are internal and must only appear inside operations.`;
 
 const OUTPUT_FORMAT = `Respond with ONLY a JSON object of this shape:
 {"reply": string, "operations": Operation[]}

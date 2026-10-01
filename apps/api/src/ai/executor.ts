@@ -9,6 +9,7 @@ import * as tasksService from '../modules/tasks/tasks.service';
 import * as vendorsService from '../modules/vendors/vendors.service';
 import { OperationError } from './operation-error';
 import type { RefRegistry } from './ref-registry';
+import * as risksService from '../modules/risks/risks.service';
 
 // Swaps the model's refs for database ids, keeping every other field as-is
 function withTaskIds<T extends { subEvent?: string | null; dependsOn?: string[] }>(
@@ -67,6 +68,11 @@ async function findDuplicate(
           sameName(v.name, op.data.name),
       );
     }
+    case 'addRisk': {
+      const risks = await risksService.listOpenRisks(ctx.eventId);
+      const match = risks.find((r) => sameName(r.title, op.data.title));
+      return match && { id: match.id, name: match.title };
+    }
     default:
       return undefined;
   }
@@ -120,9 +126,16 @@ async function applyOperation(ctx: MutationContext, op: Operation, refs: RefRegi
     case 'updateGuestSegment':
       return guestsService.updateSegment(ctx, refs.resolve(op.target, 'guest_segment'), op.patch);
 
-    case 'addRisk':
+    case 'addRisk': {
+      const { related, suggestions, ...rest } = op.data;
+      return risksService.createAiRisk(ctx, {
+        ...rest,
+        related: (related ?? []).map((ref) => refs.resolveAny(ref)),
+        suggestions: suggestions ?? [],
+      });
+    }
     case 'resolveRisk':
-      throw new OperationError('Risk tracking is not enabled yet');
+      return risksService.resolveAiRisk(ctx, refs.resolve(op.target, 'risk'));
 
     default: {
       // Compile error here means a new operation type was added without a handler
