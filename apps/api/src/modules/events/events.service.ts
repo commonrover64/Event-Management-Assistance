@@ -147,7 +147,6 @@ export async function updateSubEvent(
 ): Promise<EventDetails> {
   const event = await findEventOrThrow(ctx.eventId);
   const sub = findSubEventOrThrow(event, subEventId);
-  const wasCancelled = sub.status === 'cancelled';
   const statusBefore = sub.status;
   const changes = applyPatch(sub, toSubEventDbFields(input));
   if (changes.length === 0) return toEventDetails(event);

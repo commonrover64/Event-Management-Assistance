@@ -161,3 +161,7 @@ export async function listOpenRisks(eventId: string): Promise<Risk[]> {
   const risks = await RiskModel.find({ eventId, status: 'open' });
   return risks.map(toRisk);
 }
+
+export async function getRiskOrThrow(eventId: string, riskId: string): Promise<Risk> {
+  return toRisk(await findRiskOrThrow(eventId, riskId));
+}

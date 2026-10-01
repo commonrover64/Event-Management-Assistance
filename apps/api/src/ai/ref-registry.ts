@@ -62,13 +62,19 @@ export class RefRegistry {
     return this.byId.get(id);
   }
 
+  // Accepts a short ref or a registered database id; stored risk suggestions use ids
+  private lookup(refOrId: string): RefTarget | undefined {
+    const ref = this.byId.get(refOrId) ?? refOrId;
+    return this.byRef.get(ref);
+  }
+
   resolve(ref: string, expected: RefType): string {
     if (this.blocked.has(ref)) {
       throw new OperationError(
         `"${ref}" is ambiguous or refers to an item that could not be created`,
       );
     }
-    const target = this.byRef.get(ref);
+    const target = this.lookup(ref);
     if (!target) throw new OperationError(`Unknown reference "${ref}"`);
     if (target.type !== expected) {
       throw new OperationError(`Reference "${ref}" is a ${target.type}, expected a ${expected}`);
@@ -88,7 +94,7 @@ export class RefRegistry {
         `"${ref}" is ambiguous or refers to an item that could not be created`,
       );
     }
-    const target = this.byRef.get(ref);
+    const target = this.lookup(ref);
     if (!target) throw new OperationError(`Unknown reference "${ref}"`);
     return target;
   }

@@ -7,7 +7,7 @@ import { useEvent } from '@/hooks/use-events';
 import { getErrorMessage } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 import { ChatPanel } from './chat/chat-panel';
-import { OverviewPanel } from './overview/overview-panel';
+import { DashboardTabs } from './dashboard-tabs';
 import { WorkspaceHeader } from './workspace-header';
 
 type MobileView = 'chat' | 'dashboard';
@@ -67,7 +67,7 @@ export function EventWorkspace({ eventId }: { eventId: string }) {
       >
         <div className="mx-auto max-w-5xl space-y-6 p-4 lg:p-6">
           <WorkspaceHeader event={event} />
-          <OverviewPanel event={event} />
+          <DashboardTabs event={event} />
         </div>
       </div>
     </div>
